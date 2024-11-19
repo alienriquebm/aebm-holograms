@@ -22,9 +22,8 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"hello-world" {
+		"aebm-holograms" {
 			sourceSet sourceSets.main
-			sourceSet sourceSets.client
 		}
 	}
 
