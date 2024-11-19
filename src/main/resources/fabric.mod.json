@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "hello-world",
+  "version": "${version}",
+  "name": "hello-world",
+  "description": "This is an example description! Tell everyone what your mod is about!",
+  "authors": ["Me!"],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "CC0-1.0",
+  "icon": "assets/hello-world/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["com.example.Helloworld"]
+  },
+  "mixins": [
+    "hello-world.mixins.json",
+    {
+      "config": "hello-world.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*",
+    "fabric-command-api-v2": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
