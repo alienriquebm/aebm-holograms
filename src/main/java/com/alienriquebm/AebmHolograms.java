@@ -1,4 +1,4 @@
-package com.example;
+package com.alienriquebm;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -27,8 +27,8 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Helloworld implements DedicatedServerModInitializer {
-	public static final String MOD_ID = "hello-world";
+public class AebmHolograms implements DedicatedServerModInitializer {
+	public static final String MOD_ID = "aebm-holograms";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	private static MinecraftServer globalServer; // Referencia global al servidor

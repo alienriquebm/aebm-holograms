@@ -1,24 +1,24 @@
 {
   "schemaVersion": 1,
-  "id": "hello-world",
+  "id": "aebm-holograms",
   "version": "${version}",
-  "name": "hello-world",
-  "description": "This is an example description! Tell everyone what your mod is about!",
-  "authors": ["Me!"],
+  "name": "AEBM Holograms",
+  "description": "A mod that adds holograms to the game.",
+  "authors": ["alienriquebm"],
   "contact": {
     "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "sources": "https://github.com/alienriquebm/aebm-holograms"
   },
   "license": "CC0-1.0",
-  "icon": "assets/hello-world/icon.png",
+  "icon": "assets/aebm-holograms/icon.png",
   "environment": "server",
   "entrypoints": {
-    "server": ["com.example.Helloworld"]
+    "server": ["com.alienriquebm.AebmHolograms"]
   },
   "mixins": [
-    "hello-world.mixins.json",
+    "aebm-holograms.mixins.json",
     {
-      "config": "hello-world.client.mixins.json",
+      "config": "aebm-holograms.client.mixins.json",
       "environment": "client"
     }
   ],
