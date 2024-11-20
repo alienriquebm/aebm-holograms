@@ -36,7 +36,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 
 	@Override
 	public void onInitializeServer() {
-		LOGGER.info("DEADTHS MOD LOADED");
+		LOGGER.info("AEBM-HOLOGRAMS STARTED");
 
 		// Registrar eventos del ciclo de vida del servidor
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
@@ -47,7 +47,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 		// Programar tareas automáticas
 		scheduler.scheduleAtFixedRate(() -> {
 			try {
-				updateStatistics(null);
+				updateStatistics(null, false);
 			} catch (Exception e) {
 				LOGGER.error("Error updating statistics", e);
 			}
@@ -56,7 +56,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 		// Registrar el comando manual (opcional para depuración)
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			dispatcher.register(CommandManager.literal("topmuertes").executes(context -> {
-				updateStatistics(context.getSource());
+				updateStatistics(context.getSource(), true);
 				return 1; // Éxito
 			}));
 		});
@@ -68,7 +68,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 	}
 
 	// Método principal para actualizar estadísticas
-	private void updateStatistics(ServerCommandSource source) {
+	private void updateStatistics(ServerCommandSource source, boolean sendFeedback) {
 		List<PlayerDeathStat> playerDeathStats = new ArrayList<>();
 
 		try {
@@ -115,7 +115,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 			// Forzar la escritura de estadísticas
 			server.getPlayerManager().saveAllPlayerData();
 
-			// Crear hologramas faltantes
+			// Crear hologramas faltantes (igual que antes)
 			for (int i = 0; i < 3; i++) {
 				String tag = String.format("deadths_position%d", i + 1);
 				boolean exists = server.getOverworld().getEntitiesByType(
@@ -123,29 +123,23 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 						entity -> entity.getCommandTags().contains(tag)).size() > 0;
 
 				if (!exists) {
-					/*
-					 * String summonCommand = String.format(
-					 * "summon minecraft:text_display ~ ~1 ~ {Tags:[\"%s\"],text:'{\"text\":\"\",\"color\":\"white\",\"bold\":false}'}"
-					 * ,
-					 * tag);
-					 * server.getCommandManager().executeWithPrefix(source, summonCommand);
-					 */
 					LOGGER.info("Created missing text_display entity with tag: {}", tag);
 				}
 			}
 
-			// Obtener el nombre del mundo y el directorio de estadísticas
-			String worldName = server.getSaveProperties().getMainWorldProperties().getLevelName();
-			Path runDirectoryPath = server.getRunDirectory();
-			Path statsDirectory = runDirectoryPath.resolve(worldName).resolve("stats");
+			// Leer los archivos de estadísticas (igual que antes)
+			Path statsDirectory = server.getRunDirectory().resolve(server.getSaveProperties()
+					.getMainWorldProperties().getLevelName())
+					.resolve("stats");
 
 			if (!Files.exists(statsDirectory)) {
-				source.sendError(Text.literal("El directorio de estadísticas no existe: " + statsDirectory));
+				if (sendFeedback) {
+					source.sendError(Text.literal("El directorio de estadísticas no existe: " + statsDirectory));
+				}
 				LOGGER.warn("El directorio de estadísticas no existe: {}", statsDirectory);
 				return;
 			}
 
-			// Leer los archivos de estadísticas
 			Files.list(statsDirectory).forEach(path -> {
 				try (FileReader reader = new FileReader(path.toFile())) {
 					JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
@@ -172,14 +166,73 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 					.toList();
 
 			// Actualizar las entidades text_display
+			/*
+			 * for (int i = 0; i < 3; i++) {
+			 * PlayerDeathStat stat = i < topDeaths.size() ? topDeaths.get(i) : null;
+			 * String tag = String.format("deadths_position%d", i + 1);
+			 * String updateCommand = String.format(
+			 * "data merge entity @e[type=minecraft:text_display, tag=%s, limit=1] {text:'{\"text\":\"%s\",\"color\":\"white\", \"bold\": false}'}"
+			 * ,
+			 * tag, stat != null ? stat.getName() + " (" + stat.getDeaths() + " muertes)" :
+			 * "");
+			 * server.getCommandManager().executeWithPrefix(source, updateCommand);
+			 * }
+			 */
+
+			// Desactivar retroalimentación de comandos temporalmente
+			// Crear un ServerCommandSource completamente silencioso para evitar
+			// retroalimentación
+			ServerCommandSource silentSource = new ServerCommandSource(
+					new CommandOutput() {
+						@Override
+						public void sendMessage(Text message) {
+							// No hacer nada: silenciar todos los mensajes
+						}
+
+						@Override
+						public boolean shouldReceiveFeedback() {
+							return false; // No generar retroalimentación
+						}
+
+						@Override
+						public boolean shouldTrackOutput() {
+							return false; // No rastrear salida
+						}
+
+						@Override
+						public boolean shouldBroadcastConsoleToOps() {
+							return false; // No enviar mensajes a operadores
+						}
+					},
+					Vec3d.ZERO,
+					Vec2f.ZERO,
+					server.getOverworld(),
+					4,
+					"DeathsUpdater",
+					Text.literal("DeathsUpdater"),
+					server,
+					null);
+
+			// Usar el ServerCommandSource silencioso para ejecutar los comandos
 			for (int i = 0; i < 3; i++) {
 				PlayerDeathStat stat = i < topDeaths.size() ? topDeaths.get(i) : null;
 				String tag = String.format("deadths_position%d", i + 1);
 				String updateCommand = String.format(
 						"data merge entity @e[type=minecraft:text_display, tag=%s, limit=1] {text:'{\"text\":\"%s\",\"color\":\"white\", \"bold\": false}'}",
 						tag, stat != null ? stat.getName() + " (" + stat.getDeaths() + " muertes)" : "");
-				// LOGGER.info("Executing command: {}", updateCommand);
-				server.getCommandManager().executeWithPrefix(source, updateCommand);
+				server.getCommandManager().executeWithPrefix(silentSource, updateCommand);
+			}
+
+			// Enviar feedback al jugador si se pidió
+			if (sendFeedback) {
+				String feedback = "Top 3 jugadores con más muertes:\n";
+				for (int i = 0; i < topDeaths.size(); i++) {
+					PlayerDeathStat stat = topDeaths.get(i);
+					feedback += String.format("%d. %s - %d muertes\n", i + 1, stat.getName(), stat.getDeaths());
+				}
+				// Crear una copia inmutable de feedback
+				final String feedbackFinal = feedback;
+				source.sendFeedback(() -> Text.literal(feedbackFinal), false);
 			}
 
 		} catch (Exception e) {
