@@ -2,6 +2,7 @@ package com.alienriquebm;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -53,26 +54,118 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 			}
 		}, 0, 1, TimeUnit.MINUTES); // Actualizar cada 1 minuto
 
-		// Registrar el comando manual (opcional para depuración)
+		// Registrar los comandos
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-			dispatcher.register(CommandManager.literal("topmuertes").executes(context -> {
-				updateStatistics(context.getSource(), true);
-				return 1; // Éxito
-			}));
+			dispatcher.register(CommandManager.literal("aebm-holograms")
+					.then(CommandManager.literal("topdeaths")
+							.executes(context -> {
+								updateStatistics(context.getSource(), true);
+								return 1; // Éxito
+							}))
+					.then(CommandManager.literal("start")
+							.executes(context -> {
+								initializeHolograms(context.getSource());
+								return 1; // Éxito
+							})));
 		});
+
 	}
 
-	// Obtener la referencia global al servidor
-	public static MinecraftServer getGlobalServer() {
-		return globalServer;
+	private void initializeHolograms(ServerCommandSource source) {
+		MinecraftServer server = source.getServer();
+
+		String direction;
+		float yaw = source.getPlayer().getYaw();
+		float pitch = source.getPlayer().getPitch();
+
+		// Determinar la dirección cardinal
+		if (pitch >= 45) {
+			direction = "Abajo";
+		} else if (pitch <= -45) {
+			direction = "Arriba";
+		} else if (yaw > 45 && yaw < 135) {
+			direction = "Oeste";
+		} else if (yaw >= 135 || yaw < -135) {
+			direction = "Norte";
+		} else if (yaw >= -135 && yaw < -45) {
+			direction = "Este";
+		} else {
+			direction = "Sur";
+		}
+
+		String adjustedYaw = "0f";
+		String adjustedPitch = "0f";
+
+		switch (direction) {
+			case "Norte":
+				adjustedYaw = "0f"; // Mirando al eje Z negativo
+				break;
+			case "Sur":
+				adjustedYaw = "180f"; // Mirando al eje Z positivo
+				break;
+			case "Este":
+				adjustedYaw = "90f"; // Mirando al eje X positivo
+				break;
+			case "Oeste":
+				adjustedYaw = "-90f"; // Mirando al eje X negativo
+				break;
+			case "Arriba":
+				adjustedPitch = "-90f";
+				break;
+			case "Abajo":
+				adjustedPitch = "90f";
+				break;
+		}
+
+		// Crear hologramas
+		createHologramIfMissing(server, source, "deaths_title", getSummonCommand(
+				"Top muertes guareneras", "gold", true, "deaths_title", 2.0, adjustedYaw, adjustedPitch));
+		createHologramIfMissing(server, source, "deadths_position1", getSummonCommand(
+				"Jugador 1", "white", false, "deadths_position1", 1.5, adjustedYaw, adjustedPitch));
+		createHologramIfMissing(server, source, "deadths_position2", getSummonCommand(
+				"Jugador 2", "white", false, "deadths_position2", 1.2, adjustedYaw, adjustedPitch));
+		createHologramIfMissing(server, source, "deadths_position3", getSummonCommand(
+				"Jugador 3", "white", false, "deadths_position3", 0.9, adjustedYaw, adjustedPitch));
+
+		// Actualizar estadísticas inmediatamente
+		updateStatistics(source, false);
+		LOGGER.info("Hologramas inicializados y actualizados.");
 	}
 
-	// Método principal para actualizar estadísticas
+	private String getSummonCommand(String text, String color, boolean bold, String tag, double yOffset, String yaw,
+			String pitch) {
+
+		String command = String.format(
+				java.util.Locale.US,
+				"summon minecraft:text_display ~ ~%.1f ~ {text:'{\"text\":\"%s\",\"color\":\"%s\",\"bold\": %b }',CustomNameVisible:0b,billboard:\"fixed\",background:0b,Rotation:[%s,%s],Tags:[\"%s\"]}",
+				yOffset, text, color, bold, yaw, pitch, tag);
+		return command;
+	}
+
+	private void createHologramIfMissing(MinecraftServer server, ServerCommandSource source, String tag,
+			String summonCommand) {
+		boolean exists = server.getOverworld().getEntitiesByType(
+				EntityType.TEXT_DISPLAY,
+				entity -> entity.getCommandTags().contains(tag)).size() > 0;
+
+		if (!exists) {
+			try {
+				// Ejecutar el comando sin verificar el resultado
+				server.getCommandManager().executeWithPrefix(source, summonCommand);
+				LOGGER.info("Holograma creado con tag: {}", tag);
+			} catch (Exception e) {
+				LOGGER.error("Error al crear holograma con tag '{}': {}", tag, e.getMessage());
+			}
+		} else {
+			LOGGER.info("Holograma con tag '{}' ya existe.", tag);
+		}
+	}
+
 	private void updateStatistics(ServerCommandSource source, boolean sendFeedback) {
 		List<PlayerDeathStat> playerDeathStats = new ArrayList<>();
 
 		try {
-			MinecraftServer server = source != null ? source.getServer() : getGlobalServer();
+			MinecraftServer server = source != null ? source.getServer() : globalServer;
 			if (server == null) {
 				LOGGER.error("No se pudo acceder al servidor.");
 				return;
@@ -84,22 +177,22 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 						new CommandOutput() {
 							@Override
 							public void sendMessage(Text message) {
-								// No hacer nada: suprime los mensajes
+								// No hacer nada
 							}
 
 							@Override
 							public boolean shouldReceiveFeedback() {
-								return false; // Deshabilitar retroalimentación
+								return false;
 							}
 
 							@Override
 							public boolean shouldTrackOutput() {
-								return false; // Deshabilitar seguimiento de salida
+								return false;
 							}
 
 							@Override
 							public boolean shouldBroadcastConsoleToOps() {
-								return false; // Deshabilitar mensajes a operadores
+								return false;
 							}
 						},
 						Vec3d.ZERO,
@@ -115,19 +208,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 			// Forzar la escritura de estadísticas
 			server.getPlayerManager().saveAllPlayerData();
 
-			// Crear hologramas faltantes (igual que antes)
-			for (int i = 0; i < 3; i++) {
-				String tag = String.format("deadths_position%d", i + 1);
-				boolean exists = server.getOverworld().getEntitiesByType(
-						EntityType.TEXT_DISPLAY,
-						entity -> entity.getCommandTags().contains(tag)).size() > 0;
-
-				if (!exists) {
-					LOGGER.info("Created missing text_display entity with tag: {}", tag);
-				}
-			}
-
-			// Leer los archivos de estadísticas (igual que antes)
+			// Leer los archivos de estadísticas
 			Path statsDirectory = server.getRunDirectory().resolve(server.getSaveProperties()
 					.getMainWorldProperties().getLevelName())
 					.resolve("stats");
@@ -165,57 +246,27 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 					.limit(3)
 					.toList();
 
-			ServerCommandSource silentSource = new ServerCommandSource(
-					new CommandOutput() {
-						@Override
-						public void sendMessage(Text message) {
-							// No hacer nada: silenciar todos los mensajes
-						}
-
-						@Override
-						public boolean shouldReceiveFeedback() {
-							return false; // No generar retroalimentación
-						}
-
-						@Override
-						public boolean shouldTrackOutput() {
-							return false; // No rastrear salida
-						}
-
-						@Override
-						public boolean shouldBroadcastConsoleToOps() {
-							return false; // No enviar mensajes a operadores
-						}
-					},
-					Vec3d.ZERO,
-					Vec2f.ZERO,
-					server.getOverworld(),
-					4,
-					"DeathsUpdater",
-					Text.literal("DeathsUpdater"),
-					server,
-					null);
-
-			// Usar el ServerCommandSource silencioso para ejecutar los comandos
+			// Actualizar los hologramas
 			for (int i = 0; i < 3; i++) {
 				PlayerDeathStat stat = i < topDeaths.size() ? topDeaths.get(i) : null;
 				String tag = String.format("deadths_position%d", i + 1);
 				String updateCommand = String.format(
 						"data merge entity @e[type=minecraft:text_display, tag=%s, limit=1] {text:'{\"text\":\"%s\",\"color\":\"white\", \"bold\": false}'}",
 						tag, stat != null ? stat.getName() + " (" + stat.getDeaths() + " muertes)" : "");
-				server.getCommandManager().executeWithPrefix(silentSource, updateCommand);
+				server.getCommandManager().executeWithPrefix(source, updateCommand);
 			}
 
-			// Enviar feedback al jugador si se pidió
+			// Enviar feedback si es necesario
 			if (sendFeedback) {
-				String feedback = "Top 3 jugadores con más muertes:\n";
+				StringBuilder feedbackBuilder = new StringBuilder("Top 3 jugadores con más muertes:\n");
 				for (int i = 0; i < topDeaths.size(); i++) {
 					PlayerDeathStat stat = topDeaths.get(i);
-					feedback += String.format("%d. %s - %d muertes\n", i + 1, stat.getName(), stat.getDeaths());
+					feedbackBuilder
+							.append(String.format("%d. %s - %d muertes\n", i + 1, stat.getName(), stat.getDeaths()));
 				}
-				// Crear una copia inmutable de feedback
-				final String feedbackFinal = feedback;
-				source.sendFeedback(() -> Text.literal(feedbackFinal), false);
+				final String feedback = feedbackBuilder.toString(); // Convertir a String
+				source.sendFeedback(() -> Text.literal(feedback), false);
+
 			}
 
 		} catch (Exception e) {
@@ -223,7 +274,6 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 		}
 	}
 
-	// Clase interna para estadísticas de muertes
 	private static class PlayerDeathStat {
 		private final String name;
 		private final int deaths;
