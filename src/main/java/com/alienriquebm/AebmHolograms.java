@@ -81,9 +81,12 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 			MinecraftServer server = source.getServer();
 			String[] tags = { "deaths_title", "deadths_position1", "deadths_position2", "deadths_position3" };
 
+			// Crear un ServerCommandSource silencioso
+			ServerCommandSource silentSource = source.withSilent();
+
 			for (String tag : tags) {
 				String command = String.format("kill @e[type=minecraft:text_display,tag=%s]", tag);
-				server.getCommandManager().executeWithPrefix(source, command);
+				server.getCommandManager().executeWithPrefix(silentSource, command);
 				LOGGER.info("Holograma con tag '{}' eliminado.", tag);
 			}
 
@@ -173,8 +176,11 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 
 		if (!exists) {
 			try {
+				// Crear un ServerCommandSource silencioso
+				ServerCommandSource silentSource = source.withSilent();
+
 				// Ejecutar el comando sin verificar el resultado
-				server.getCommandManager().executeWithPrefix(source, summonCommand);
+				server.getCommandManager().executeWithPrefix(silentSource, summonCommand);
 				LOGGER.info("Holograma creado con tag: {}", tag);
 			} catch (Exception e) {
 				LOGGER.error("Error al crear holograma con tag '{}': {}", tag, e.getMessage());
