@@ -234,6 +234,9 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 						null);
 			}
 
+			// Crear un ServerCommandSource silencioso
+			ServerCommandSource silentSource = source.withSilent();
+
 			// Forzar la escritura de estadísticas
 			server.getPlayerManager().saveAllPlayerData();
 
@@ -282,7 +285,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 				String updateCommand = String.format(
 						"data merge entity @e[type=minecraft:text_display, tag=%s, limit=1] {text:'{\"text\":\"%s\",\"color\":\"white\", \"bold\": false}'}",
 						tag, stat != null ? stat.getName() + " (" + stat.getDeaths() + " muertes)" : "");
-				server.getCommandManager().executeWithPrefix(source, updateCommand);
+				server.getCommandManager().executeWithPrefix(silentSource, updateCommand);
 			}
 
 			// Enviar feedback si es necesario
@@ -295,7 +298,6 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 				}
 				final String feedback = feedbackBuilder.toString(); // Convertir a String
 				source.sendFeedback(() -> Text.literal(feedback), false);
-
 			}
 
 		} catch (Exception e) {
