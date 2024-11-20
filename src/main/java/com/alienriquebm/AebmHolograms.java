@@ -54,7 +54,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 			}
 		}, 0, 1, TimeUnit.MINUTES); // Actualizar cada 1 minuto
 
-		// Registrar los comandos
+		// Registrar comandos
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			dispatcher.register(CommandManager.literal("aebm-holograms")
 					.then(CommandManager.literal("topdeaths")
@@ -66,9 +66,32 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 							.executes(context -> {
 								initializeHolograms(context.getSource());
 								return 1; // Éxito
+							}))
+					.then(CommandManager.literal("delete")
+							.executes(context -> {
+								deleteHolograms(context.getSource());
+								return 1; // Éxito
 							})));
 		});
 
+	}
+
+	private void deleteHolograms(ServerCommandSource source) {
+		try {
+			MinecraftServer server = source.getServer();
+			String[] tags = { "deaths_title", "deadths_position1", "deadths_position2", "deadths_position3" };
+
+			for (String tag : tags) {
+				String command = String.format("kill @e[type=minecraft:text_display,tag=%s]", tag);
+				server.getCommandManager().executeWithPrefix(source, command);
+				LOGGER.info("Holograma con tag '{}' eliminado.", tag);
+			}
+
+			source.sendFeedback(() -> Text.literal("Todos los hologramas han sido eliminados."), false);
+		} catch (Exception e) {
+			LOGGER.error("Error eliminando hologramas: {}", e.getMessage());
+			source.sendError(Text.literal("Error al eliminar hologramas."));
+		}
 	}
 
 	private void initializeHolograms(ServerCommandSource source) {
@@ -119,7 +142,7 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 
 		// Crear hologramas
 		createHologramIfMissing(server, source, "deaths_title", getSummonCommand(
-				"Top muertes guareneras", "gold", true, "deaths_title", 2.0, adjustedYaw, adjustedPitch));
+				"Top muertes Guareneras", "gold", true, "deaths_title", 2.0, adjustedYaw, adjustedPitch));
 		createHologramIfMissing(server, source, "deadths_position1", getSummonCommand(
 				"Jugador 1", "white", false, "deadths_position1", 1.5, adjustedYaw, adjustedPitch));
 		createHologramIfMissing(server, source, "deadths_position2", getSummonCommand(
