@@ -165,23 +165,6 @@ public class AebmHolograms implements DedicatedServerModInitializer {
 					.limit(3)
 					.toList();
 
-			// Actualizar las entidades text_display
-			/*
-			 * for (int i = 0; i < 3; i++) {
-			 * PlayerDeathStat stat = i < topDeaths.size() ? topDeaths.get(i) : null;
-			 * String tag = String.format("deadths_position%d", i + 1);
-			 * String updateCommand = String.format(
-			 * "data merge entity @e[type=minecraft:text_display, tag=%s, limit=1] {text:'{\"text\":\"%s\",\"color\":\"white\", \"bold\": false}'}"
-			 * ,
-			 * tag, stat != null ? stat.getName() + " (" + stat.getDeaths() + " muertes)" :
-			 * "");
-			 * server.getCommandManager().executeWithPrefix(source, updateCommand);
-			 * }
-			 */
-
-			// Desactivar retroalimentación de comandos temporalmente
-			// Crear un ServerCommandSource completamente silencioso para evitar
-			// retroalimentación
 			ServerCommandSource silentSource = new ServerCommandSource(
 					new CommandOutput() {
 						@Override
